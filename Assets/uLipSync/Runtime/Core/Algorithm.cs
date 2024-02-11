@@ -435,50 +435,48 @@ public static unsafe class Algorithm
         return math.sqrt(sum);
     }
 
-    public static void DeltaMFCC(
-        in NativeArray<float> mfcc,
-        int mfccNum,
-        out NativeArray<float> deltaMfcc,
-        int deltaMfccNum,
-        in NativeArray<float> mfccBuffer,
-        int mfccBufferIndex
+    public static void Delta(
+        in NativeArray<float> data,
+        int length,
+        in NativeArray<float> buffer,
+        int index,
+        out NativeArray<float> output,
+        int N
     )
     {
-        deltaMfcc = new NativeArray<float>(mfccNum, Allocator.Temp);
+        output = new NativeArray<float>(length, Allocator.Temp);
 
-        NativeArray<float>.Copy(mfcc, 0, mfccBuffer, mfccBufferIndex * mfccNum, mfccNum);
+        NativeArray<float>.Copy(data, 0, buffer, index * length, length);
 
-        DeltaMFCC(
-            (float*)mfcc.GetUnsafeReadOnlyPtr(),
-            mfccNum,
-            (float*)mfccBuffer.GetUnsafeReadOnlyPtr(),
-            mfccBufferIndex,
-            (float*)deltaMfcc.GetUnsafePtr(),
-            deltaMfccNum
+        Delta(
+            (float*)buffer.GetUnsafeReadOnlyPtr(),
+            length,
+            index,
+            (float*)output.GetUnsafePtr(),
+            N
         );
     }
 
     [BurstCompile]
-    static void DeltaMFCC(
-        float* mfcc,
-        int mfccNum,
-        float* mfccBuffer,
-        int mfccBufferIndex,
-        float* deltaMfcc,
-        int deltaMfccNum
+    static void Delta(
+        float* buffer,
+        int length,
+        int index,
+        float* output,
+        int N
     )
     {
-        var bufferCount = deltaMfccNum * 2 + 1;
-        for (int i = 0; i < mfccNum; ++i) {
+        var bufferCount = N * 2 + 1;
+        for (int i = 0; i < length; ++i) {
             var numerator = 0f;
             var denominator = 0f;
-            for (int n = 1; n <= deltaMfccNum; ++n) {
-                var prev = (mfccBufferIndex - n + bufferCount) % bufferCount;
-                var next = (mfccBufferIndex + n) % bufferCount;
-                numerator += n * (mfccBuffer[next * mfccNum + i] - mfccBuffer[prev * mfccNum + i]);
+            for (int n = 1; n <= N; ++n) {
+                var prev = (index - n + bufferCount) % bufferCount;
+                var next = (index + n) % bufferCount;
+                numerator += n * (buffer[next * length + i] - buffer[prev * length + i]);
                 denominator += n * n;
             }
-            deltaMfcc[i] = numerator / (2 * denominator);
+            output[i] = numerator / (2 * denominator);
         }
     }
 }

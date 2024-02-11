@@ -60,7 +60,7 @@ public struct LipSyncJob : IJob
         NativeArray<float>.Copy(melCepstrum, 1, mfcc, 0, mfccNum);
 
         if (deltaMfccNum > 0) {
-            Algorithm.DeltaMFCC(mfcc, mfccNum, out var deltaMfcc, deltaMfccNum, mfccBuffer, mfccBufferIndex);
+            Algorithm.Delta(mfcc, mfccNum, mfccBuffer, mfccBufferIndex, out var deltaMfcc, deltaMfccNum);
             NativeArray<float>.Copy(deltaMfcc, 0, mfcc, mfccNum, mfccNum);
             deltaMfcc.Dispose();
         }
