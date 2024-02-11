@@ -22,13 +22,16 @@ public struct LipSyncJob : IJob
     [ReadOnly] public int melFilterBankChannels;
     [ReadOnly] public int mfccNum;
     [ReadOnly] public int deltaMfccNum;
+    [ReadOnly] public int deltaDeltaMfccNum;
     [ReadOnly] public CompareMethod compareMethod;
     [ReadOnly] public NativeArray<float> means;
     [ReadOnly] public NativeArray<float> standardDeviations;
     [ReadOnly] public NativeArray<float> phonemes;
     [ReadOnly] public int mfccBufferIndex;
+    [ReadOnly] public int deltaMfccBufferIndex;
     public NativeArray<float> mfcc;
     public NativeArray<float> mfccBuffer;
+    public NativeArray<float> deltaMfccBuffer;
     public NativeArray<float> scores;
     public NativeArray<Info> info;
     
@@ -59,9 +62,20 @@ public struct LipSyncJob : IJob
 
         NativeArray<float>.Copy(melCepstrum, 1, mfcc, 0, mfccNum);
 
-        if (deltaMfccNum > 0) {
-            Algorithm.Delta(mfcc, mfccNum, mfccBuffer, mfccBufferIndex, out var deltaMfcc, deltaMfccNum);
-            NativeArray<float>.Copy(deltaMfcc, 0, mfcc, mfccNum, mfccNum);
+        if (deltaMfccNum > 0 || deltaDeltaMfccNum > 0)
+        {
+            Algorithm.Delta(mfcc, mfccNum, mfccBuffer, mfccBufferIndex, out var deltaMfcc, deltaMfccNum > 0 ? deltaMfccNum : deltaDeltaMfccNum);
+            if (deltaMfccNum > 0)
+            {
+                NativeArray<float>.Copy(deltaMfcc, 0, mfcc, mfccNum, mfccNum);
+            }
+
+            if (deltaDeltaMfccNum > 0) {
+                Algorithm.Delta(deltaMfcc, mfccNum, deltaMfccBuffer, deltaMfccBufferIndex, out var deltaDeltaMfcc, deltaDeltaMfccNum);
+                NativeArray<float>.Copy(deltaDeltaMfcc, 0, mfcc, mfccNum * (1 + ((deltaMfccNum > 0) ? 1 : 0)), mfccNum);
+                deltaDeltaMfcc.Dispose();
+            }
+
             deltaMfcc.Dispose();
         }
 

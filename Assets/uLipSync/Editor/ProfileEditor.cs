@@ -52,6 +52,7 @@ public class ProfileEditor : Editor
             ++EditorGUI.indentLevel;
             EditorUtil.DrawProperty(serializedObject, nameof(profile.mfccDataCount));
             EditorUtil.DrawProperty(serializedObject, nameof(profile.deltaMfccNum));
+            EditorUtil.DrawProperty(serializedObject, nameof(profile.deltaDeltaMfccNum));
             EditorUtil.DrawProperty(serializedObject, nameof(profile.melFilterBankChannels));
             EditorUtil.DrawProperty(serializedObject, nameof(profile.targetSampleRate));
             EditorUtil.DrawProperty(serializedObject, nameof(profile.sampleCount));

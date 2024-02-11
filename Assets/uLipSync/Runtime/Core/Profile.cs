@@ -64,9 +64,9 @@ public class MfccData
 
     public void AddCalibrationData(float[] mfcc)
     {
-        if (mfcc.Length != 12 && mfcc.Length != 24)
+        if (mfcc.Length != 12 && mfcc.Length != 24 && mfcc.Length != 36)
         {
-            Debug.LogError("The length of MFCC array should be 12 or 24.");
+            Debug.LogError("The length of MFCC array should be 12 or 24 or 36.");
             return;
         }
 
@@ -126,6 +126,8 @@ public class Profile : ScriptableObject
     public CompareMethod compareMethod = CompareMethod.L2Norm;
     [Tooltip("The number of delta MFCC")]
     public int deltaMfccNum = 0;
+    [Tooltip("The number of delta delta MFCC")]
+    public int deltaDeltaMfccNum = 0;
 
     public List<MfccData> mfccs = new List<MfccData>();
     
@@ -134,7 +136,7 @@ public class Profile : ScriptableObject
     public float[] means => _means; 
     public float[] standardDeviation => _stdDevs; 
 
-    public int mfccLength => deltaMfccNum > 0 ? mfccNum * 2 : mfccNum;
+    public int mfccLength => mfccNum * (1 + ((deltaMfccNum > 0) ? 1 : 0) + ((deltaDeltaMfccNum > 0) ? 1 : 0));
 
     void OnEnable()
     {

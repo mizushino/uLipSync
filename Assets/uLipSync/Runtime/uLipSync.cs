@@ -23,12 +23,14 @@ public class uLipSync : MonoBehaviour
     int _index = 0;
     bool _isDataReceived = false;
     int _mfccBufferIndex = 0;
+    int _deltaMfccBufferIndex = 0;
 
     NativeArray<float> _rawInputData;
     NativeArray<float> _inputData;
     NativeArray<float> _mfcc;
     NativeArray<float> _mfccForOther;
     NativeArray<float> _mfccBuffer;
+    NativeArray<float> _deltaMfccBuffer;
     NativeArray<float> _means;
     NativeArray<float> _standardDeviations;
     NativeArray<float> _phonemes;
@@ -73,8 +75,9 @@ public class uLipSync : MonoBehaviour
         }
     }
     
-    int mfccLength => profile ? (profile.deltaMfccNum > 0 ? profile.mfccNum * 2 : profile.mfccNum) : 12;
-    int mfccBufferCount => profile ? profile.deltaMfccNum * 2 + 1 : 1;
+    int mfccLength => profile ? profile.mfccNum * (1 + (profile.deltaMfccNum > 0 ? 1 : 0) + (profile.deltaDeltaMfccNum > 0 ? 1 : 0)) : 12;
+    int mfccBufferCount => profile ? (profile.deltaMfccNum > 0 ? profile.deltaMfccNum : profile.deltaDeltaMfccNum) * 2 + 1 : 1;
+    int deltaMfccBufferCount => profile ? profile.deltaDeltaMfccNum * 2 + 1 : 1;
 
     void Awake()
     {
@@ -109,9 +112,9 @@ public class uLipSync : MonoBehaviour
         InvokeCallback();
         UpdateCalibration();
         UpdatePhonemes();
+        UpdateBuffers();
         ScheduleJob();
 
-        UpdateBuffers();
         UpdateAudioSource();
         UpdateAudioSourceProxy();
     }
@@ -135,6 +138,7 @@ public class uLipSync : MonoBehaviour
             _mfcc = new NativeArray<float>(mfccLength, Allocator.Persistent); 
             _mfccForOther = new NativeArray<float>(mfccLength, Allocator.Persistent); 
             _mfccBuffer = new NativeArray<float>(mfccBufferCount * profile.mfccNum, Allocator.Persistent);
+            _deltaMfccBuffer = new NativeArray<float>(deltaMfccBufferCount * profile.mfccNum, Allocator.Persistent);
             _means = new NativeArray<float>(mfccLength, Allocator.Persistent); 
             _standardDeviations = new NativeArray<float>(mfccLength, Allocator.Persistent); 
             _scores = new NativeArray<float>(phonemeCount, Allocator.Persistent);
@@ -167,6 +171,7 @@ public class uLipSync : MonoBehaviour
             _mfcc.Dispose();
             _mfccForOther.Dispose();
             _mfccBuffer.Dispose();
+            _deltaMfccBuffer.Dispose();
             _means.Dispose();
             _standardDeviations.Dispose();
             _scores.Dispose();
@@ -190,6 +195,7 @@ public class uLipSync : MonoBehaviour
         if (inputSampleCount != _rawInputData.Length ||
             profile.mfccs.Count * mfccLength != _phonemes.Length ||
             mfccBufferCount * profile.mfccNum != _mfccBuffer.Length ||
+            deltaMfccBufferCount * profile.mfccNum != _deltaMfccBuffer.Length ||
             _means.Length != profile.means.Length
 #if ULIPSYNC_DEBUG
             || profile.melFilterBankChannels != _debugMelSpectrum.Length
@@ -298,12 +304,15 @@ public class uLipSync : MonoBehaviour
             mfcc = _mfcc,
             mfccNum = profile.mfccNum,
             mfccBuffer = _mfccBuffer,
+            deltaMfccBuffer = _deltaMfccBuffer,
             phonemes = _phonemes,
             compareMethod = profile.compareMethod,
             scores = _scores,
             info = _info,
             deltaMfccNum = profile.deltaMfccNum,
+            deltaDeltaMfccNum = profile.deltaDeltaMfccNum,
             mfccBufferIndex = _mfccBufferIndex % mfccBufferCount,
+            deltaMfccBufferIndex = _deltaMfccBufferIndex % deltaMfccBufferCount,
 #if ULIPSYNC_DEBUG
             debugData = _debugData,
             debugSpectrum = _debugSpectrum,
@@ -312,6 +321,7 @@ public class uLipSync : MonoBehaviour
 #endif
         };
         _mfccBufferIndex = (_mfccBufferIndex + 1) % mfccBufferCount;
+        _deltaMfccBufferIndex = (_deltaMfccBufferIndex + 1) % deltaMfccBufferCount;
 
         _jobHandle = lipSyncJob.Schedule();
     }
