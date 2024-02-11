@@ -64,7 +64,13 @@ public struct LipSyncJob : IJob
 
         if (deltaMfccNum > 0 || deltaDeltaMfccNum > 0)
         {
-            Algorithm.Delta(mfcc, mfccNum, mfccBuffer, mfccBufferIndex, out var deltaMfcc, deltaMfccNum > 0 ? deltaMfccNum : deltaDeltaMfccNum);
+            var deltaMfccN = deltaMfccNum > 0 ? deltaMfccNum : deltaDeltaMfccNum;
+            var mfccBufferCount = deltaMfccN * 2 + 1;
+
+            Algorithm.Delta(mfcc, mfccNum, mfccBuffer, mfccBufferIndex, out var deltaMfcc, deltaMfccN);
+
+            NativeArray<float>.Copy(mfccBuffer, mfccNum * ((mfccBufferIndex - deltaMfccN + mfccBufferCount) % mfccBufferCount), mfcc, 0, mfccNum);
+
             if (deltaMfccNum > 0)
             {
                 NativeArray<float>.Copy(deltaMfcc, 0, mfcc, mfccNum, mfccNum);
