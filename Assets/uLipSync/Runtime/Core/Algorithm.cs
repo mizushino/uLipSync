@@ -434,6 +434,52 @@ public static unsafe class Algorithm
         }
         return math.sqrt(sum);
     }
-}
 
+    public static void DeltaMFCC(
+        in NativeArray<float> mfcc,
+        int mfccNum,
+        out NativeArray<float> deltaMfcc,
+        int deltaMfccNum,
+        in NativeArray<float> mfccBuffer,
+        int mfccBufferIndex
+    )
+    {
+        deltaMfcc = new NativeArray<float>(mfccNum, Allocator.Temp);
+
+        NativeArray<float>.Copy(mfcc, 0, mfccBuffer, mfccBufferIndex * mfccNum, mfccNum);
+
+        DeltaMFCC(
+            (float*)mfcc.GetUnsafeReadOnlyPtr(),
+            mfccNum,
+            (float*)mfccBuffer.GetUnsafeReadOnlyPtr(),
+            mfccBufferIndex,
+            (float*)deltaMfcc.GetUnsafePtr(),
+            deltaMfccNum
+        );
+    }
+
+    [BurstCompile]
+    static void DeltaMFCC(
+        float* mfcc,
+        int mfccNum,
+        float* mfccBuffer,
+        int mfccBufferIndex,
+        float* deltaMfcc,
+        int deltaMfccNum
+    )
+    {
+        var bufferCount = deltaMfccNum * 2 + 1;
+        for (int i = 0; i < mfccNum; ++i) {
+            var numerator = 0f;
+            var denominator = 0f;
+            for (int n = 1; n <= deltaMfccNum; ++n) {
+                var prev = (mfccBufferIndex - n + bufferCount) % bufferCount;
+                var next = (mfccBufferIndex + n) % bufferCount;
+                numerator += n * (mfccBuffer[next * mfccNum + i] - mfccBuffer[prev * mfccNum + i]);
+                denominator += n * n;
+            }
+            deltaMfcc[i] = numerator / (2 * denominator);
+        }
+    }
+}
 }

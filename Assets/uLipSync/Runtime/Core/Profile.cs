@@ -36,11 +36,18 @@ public class MfccData
         Deallocate();
     }
 
-    public void Allocate()
+    public void Allocate(int length)
     {
-        if (IsAllocated()) return;
+        if (IsAllocated())
+        {
+            if (mfccNativeArray.Length == length)
+            {
+                return;
+            }
+            Deallocate();
+        }
 
-        mfccNativeArray = new NativeArray<float>(12, Allocator.Persistent);
+        mfccNativeArray = new NativeArray<float>(length, Allocator.Persistent);
     }
 
     public void Deallocate()
@@ -57,11 +64,17 @@ public class MfccData
 
     public void AddCalibrationData(float[] mfcc)
     {
-        if (mfcc.Length != 12)
+        if (mfcc.Length != 12 && mfcc.Length != 24)
         {
-            Debug.LogError("The length of MFCC array should be 12.");
+            Debug.LogError("The length of MFCC array should be 12 or 24.");
             return;
         }
+
+        if (mfccCalibrationDataList.Count > 0 && mfcc.Length != mfccCalibrationDataList[0].length)
+        {
+            mfccCalibrationDataList.Clear();
+        }
+
         mfccCalibrationDataList.Add(new MfccCalibrationData() { array = mfcc });
     }
 
@@ -73,8 +86,9 @@ public class MfccData
     public void UpdateNativeArray()
     {
         if (mfccCalibrationDataList.Count == 0) return;
+        if (mfccNativeArray.Length != mfccCalibrationDataList[0].length) return;
 
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < mfccNativeArray.Length; ++i)
         {
             mfccNativeArray[i] = 0f;
             foreach (var mfcc in mfccCalibrationDataList)
@@ -110,21 +124,25 @@ public class Profile : ScriptableObject
     public bool useStandardization = false;
     [Tooltip("The comparison method for MFCC")]
     public CompareMethod compareMethod = CompareMethod.L2Norm;
+    [Tooltip("The number of delta MFCC")]
+    public int deltaMfccNum = 0;
 
     public List<MfccData> mfccs = new List<MfccData>();
     
-    float[] _means = new float[12];
-    float[] _stdDevs = new float[12];
+    float[] _means;
+    float[] _stdDevs;
     public float[] means => _means; 
     public float[] standardDeviation => _stdDevs; 
-        
+
+    public int mfccLength => deltaMfccNum > 0 ? mfccNum * 2 : mfccNum;
+
     void OnEnable()
     {
         UpdateMeansAndStandardization();
 
         foreach (var data in mfccs)
         {
-            data.Allocate();
+            data.Allocate(mfccLength);
             data.RemoveOldCalibrationData(mfccDataCount);
             data.UpdateNativeArray();
         }
@@ -148,10 +166,10 @@ public class Profile : ScriptableObject
     public void AddMfcc(string name)
     {
         var data = new MfccData(name);
-        data.Allocate();
+        data.Allocate(mfccLength);
         for (int i = 0; i < mfccDataCount; ++i)
         {
-            data.AddCalibrationData(new float[12]);
+            data.AddCalibrationData(new float[mfccLength]);
         }
         mfccs.Add(data);
     }
@@ -240,6 +258,11 @@ public class Profile : ScriptableObject
     
     void UpdateMeans()
     {
+        if (_means == null || _means.Length != mfccLength)
+        {
+            _means = new float[mfccLength];
+        }
+
         for (int i = 0; i < _means.Length; ++i)
         {
             _means[i] = 0f;
@@ -269,6 +292,11 @@ public class Profile : ScriptableObject
 
     void UpdateStandardizations()
     {
+        if (_stdDevs == null || _stdDevs.Length != mfccLength)
+        {
+            _stdDevs = new float[mfccLength];
+        }
+
         if (!useStandardization)
         {
             for (int i = 0; i < _stdDevs.Length; ++i)

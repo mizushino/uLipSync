@@ -20,11 +20,15 @@ public struct LipSyncJob : IJob
     [ReadOnly] public int outputSampleRate;
     [ReadOnly] public int targetSampleRate;
     [ReadOnly] public int melFilterBankChannels;
+    [ReadOnly] public int mfccNum;
+    [ReadOnly] public int deltaMfccNum;
     [ReadOnly] public CompareMethod compareMethod;
     [ReadOnly] public NativeArray<float> means;
     [ReadOnly] public NativeArray<float> standardDeviations;
     [ReadOnly] public NativeArray<float> phonemes;
+    [ReadOnly] public int mfccBufferIndex;
     public NativeArray<float> mfcc;
+    public NativeArray<float> mfccBuffer;
     public NativeArray<float> scores;
     public NativeArray<Info> info;
     
@@ -53,9 +57,12 @@ public struct LipSyncJob : IJob
         Algorithm.PowerToDb(ref melSpectrum);
         Algorithm.DCT(melSpectrum, out var melCepstrum);
 
-        for (int i = 1; i <= mfcc.Length; ++i)
-        {
-            mfcc[i - 1] = melCepstrum[i];
+        NativeArray<float>.Copy(melCepstrum, 1, mfcc, 0, mfccNum);
+
+        if (deltaMfccNum > 0) {
+            Algorithm.DeltaMFCC(mfcc, mfccNum, out var deltaMfcc, deltaMfccNum, mfccBuffer, mfccBufferIndex);
+            NativeArray<float>.Copy(deltaMfcc, 0, mfcc, mfccNum, mfccNum);
+            deltaMfcc.Dispose();
         }
 
         CalcScores();
